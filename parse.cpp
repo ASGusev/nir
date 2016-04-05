@@ -108,7 +108,7 @@ void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::
 		}
 		else if (line == MGF_SCAN_ENDING) {
 			std::unordered_map < int, Scan > ::iterator in_theoretic = theoretic_scans_map.find(cur_scan.id);
-			if (!cur_scan.pikes_number && in_theoretic != theoretic_scans_map.end() && in_theoretic->second.e_value < 1e-10) {
+			if (!cur_scan.pikes_number && in_theoretic != theoretic_scans_map.end()/* && in_theoretic->second.e_value < 1e-10*/) {
 				std::cout << program << ' ' << cur_scan.id << ' ' << in_theoretic->second.e_value << std::endl;
 			}
 			/*
@@ -148,5 +148,8 @@ int main() {
 	go_through_res(theoretic_scans_map, "Thermo_Xtraxt", THERMO_XTRACT_FILE_NAME);
 	go_through_res(theoretic_scans_map, "MS_Align", MS_ALIGN_FILE_NAME);
 
+	std::cin.clear();
+	std::cin.sync();
+	std::cin.get();
 	return 0;
 }

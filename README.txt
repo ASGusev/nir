@@ -1,0 +1,1 @@
+—борка командой g++ -std=c++11 -static -static-libgcc -static-libstdc++ -o2 -o parse.exe parse.cpp
