@@ -4,6 +4,9 @@
 #include <string>
 #include <sstream>
 #include <unordered_map>
+#include <algorithm>
+
+const double EPS = 1e-5;
 
 struct Scan {
 	int id;
@@ -73,6 +76,8 @@ const std::string MGF_SCAN_BEGINNING = "BEGIN IONS";
 const std::string MGF_SCAN_ENDING = "END IONS";
 const std::string ID_PREF = "TITLE=";
 const std::string PEPMASS_PREF = "PEPMASS=";
+const std::string CHARGE_PREF = "CHARGE=";
+const int CHARGE_BORDER = 11;
 
 int get_int(std::string s) {
 	std::stringstream stream(s);
@@ -97,6 +102,13 @@ int thermo_xtract_id(std::string title) {
 	return std::stoi(title.substr(eq_pos + 1, title.size() - eq_pos - 2));
 }
 
+bool check_scan(Scan &scan, std::unordered_map < int, Scan > &theoretic_scans_map) {
+	std::unordered_map < int, Scan > ::iterator in_theoretic = theoretic_scans_map.find(scan.id);
+	return (in_theoretic != theoretic_scans_map.end()) &&
+		(scan.mass < EPS || scan.charge >= CHARGE_BORDER || in_theoretic->second.charge >= CHARGE_BORDER
+			|| in_theoretic->second.mass == 0);
+}
+
 void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::string program, std::string filename) {
 	std::ifstream file(filename);
 	Scan cur_scan;
@@ -107,17 +119,10 @@ void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::
 			reset_scan(cur_scan);
 		}
 		else if (line == MGF_SCAN_ENDING) {
-			std::unordered_map < int, Scan > ::iterator in_theoretic = theoretic_scans_map.find(cur_scan.id);
-			if (!cur_scan.pikes_number && in_theoretic != theoretic_scans_map.end()/* && in_theoretic->second.e_value < 1e-10*/) {
-				std::cout << program << ' ' << cur_scan.id << ' ' << in_theoretic->second.e_value << std::endl;
+			if (check_scan(cur_scan, theoretic_scans_map)) {
+				std::unordered_map < int, Scan > ::iterator in_theoretic = theoretic_scans_map.find(cur_scan.id);
+				std::cout << program << ' ' << cur_scan.id << ' ' << in_theoretic->second.e_value << ' ' << cur_scan.mass << ' ' << cur_scan.charge << std::endl;
 			}
-			/*
-			if (theoretic_scans_map.find(cur_scan.id) != theoretic_scans_map.end()) {
-				std::cout << cur_scan.id << ' ' << cur_scan.mass;
-				std::cout << ' '<< theoretic_scans_map.find(cur_scan.id)->second.mass;
-				std::cout << std::endl;
-			}
-			*/
 		}
 		else if (line.compare(0, ID_PREF.size(), ID_PREF) == 0) {
 			if (program[0] == 'M') {
@@ -129,6 +134,11 @@ void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::
 		}
 		else if (line.compare(0, PEPMASS_PREF.size(), PEPMASS_PREF) == 0) {
 			cur_scan.mass = std::stod(line.substr(PEPMASS_PREF.size(), line.size() - PEPMASS_PREF.size()));
+		}
+		else if (line.compare(0, CHARGE_PREF.size(), CHARGE_PREF) == 0) {
+			int charge_beginning = CHARGE_PREF.size();
+			int charge_len = line.find_first_not_of("1234567890", charge_beginning) - charge_beginning;
+			cur_scan.charge = std::stoi(line.substr(charge_beginning, charge_len));
 		}
 		else if (line[0] >= '0' && line[0] <= '9') {
 			cur_scan.pikes_number++;
