@@ -5,8 +5,9 @@
 #include <sstream>
 #include <unordered_map>
 #include <algorithm>
+#include <cmath>
 
-const double EPS = 1e-5;
+const double EPS = 1e-9;
 
 struct Scan {
 	int id;
@@ -69,29 +70,16 @@ void read_scans_from_tsv(std::string filename, std::vector < Scan > &scans) {
 	file.close();
 }
 
-const std::string THEORETIC_FILE_NAME = "140509QXc1_car_anh_tryp_001.tsv";
-const std::string MS_ALIGN_FILE_NAME = "140509QXc1_car_anh_tryp_001_msdeconv.mgf";
-const std::string THERMO_XTRACT_FILE_NAME = "140509QXc1_car_anh_tryp_001_xtract.mgf";
+const int GROUPS_OF_SCANS = 2;
+const std::string THEORETIC_FILE_NAMES[GROUPS_OF_SCANS] = { "140509QXc1_car_anh_tryp_001.tsv", "140509QXc1_car_anh_tryp_004.tsv" };
+const std::string MS_ALIGN_FILE_NAMES[GROUPS_OF_SCANS] = { "140509QXc1_car_anh_tryp_001_msdeconv.mgf", "140509QXc1_car_anh_tryp_004_msdeconv.mgf" };
+const std::string THERMO_XTRACT_FILE_NAMES[GROUPS_OF_SCANS] = { "140509QXc1_car_anh_tryp_001_xtract.mgf", "140509QXc1_car_anh_tryp_004_xtract.mgf" };
 const std::string MGF_SCAN_BEGINNING = "BEGIN IONS";
 const std::string MGF_SCAN_ENDING = "END IONS";
 const std::string ID_PREF = "TITLE=";
 const std::string PEPMASS_PREF = "PEPMASS=";
 const std::string CHARGE_PREF = "CHARGE=";
 const int CHARGE_BORDER = 11;
-
-int get_int(std::string s) {
-	std::stringstream stream(s);
-	int ans;
-	stream >> ans;
-	return ans;
-}
-
-double get_double(std::string s) {
-	std::stringstream stream(s);
-	double ans;
-	stream >> ans;
-	return ans;
-}
 
 int msalign_id(std::string title) {
 	return std::stoi(title.substr(ID_PREF.size() + 5, title.size() - (ID_PREF.size() + 5)));
@@ -109,7 +97,47 @@ bool check_scan(Scan &scan, std::unordered_map < int, Scan > &theoretic_scans_ma
 			|| in_theoretic->second.mass == 0);
 }
 
-void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::string program, std::string filename) {
+const double NEUTRAL_MASS = 1.007276;
+
+class NeutralCounter {
+private:
+	int counter;
+public:
+	NeutralCounter():counter(0) {};
+
+	void operator() (Scan &scan) {
+		if (abs(scan.mass - NEUTRAL_MASS) < EPS) {
+			counter++;
+		}
+	}
+
+	int get_number() {
+		return counter;
+	}
+};
+
+class ZeroPeaksCounter {
+private:
+	int counter;
+	std::string program_name;
+	std::unordered_map < int, Scan > &scan_map;
+public:
+	ZeroPeaksCounter(std::string program, std::unordered_map < int, Scan > &map):counter(0), program_name(program), scan_map(map) {};
+
+	void operator() (Scan &scan) {
+		if (scan.pikes_number == 0 && scan_map.find(scan.id) != scan_map.end()) {
+			std::cout << program_name << ' ' << scan.id << ' ' << scan_map.find(scan.id)->second.e_value << std::endl;
+			counter++;
+		}
+	}
+
+	int get_number() {
+		return counter;
+	}
+};
+
+template < class Func >
+void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::string program, std::string filename, Func &action) {
 	std::ifstream file(filename);
 	Scan cur_scan;
 	while (!file.eof()) {
@@ -119,10 +147,7 @@ void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::
 			reset_scan(cur_scan);
 		}
 		else if (line == MGF_SCAN_ENDING) {
-			if (check_scan(cur_scan, theoretic_scans_map)) {
-				std::unordered_map < int, Scan > ::iterator in_theoretic = theoretic_scans_map.find(cur_scan.id);
-				std::cout << program << ' ' << cur_scan.id << ' ' << in_theoretic->second.e_value << ' ' << cur_scan.mass << ' ' << cur_scan.charge << std::endl;
-			}
+			action(cur_scan);
 		}
 		else if (line.compare(0, ID_PREF.size(), ID_PREF) == 0) {
 			if (program[0] == 'M') {
@@ -149,15 +174,37 @@ void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::
 
 int main() {
 	std::cout.sync_with_stdio(false);
-	std::vector < Scan > theoretic_scans;
-	read_scans_from_tsv(THEORETIC_FILE_NAME, theoretic_scans);
-	std::unordered_map < int, Scan > theoretic_scans_map;
-	for (unsigned int i = 0; i < theoretic_scans.size(); i++) {
-		theoretic_scans_map[theoretic_scans[i].id] = theoretic_scans[i];
+	std::unordered_map < int, Scan > theoretic_scans_maps[GROUPS_OF_SCANS];
+	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
+		std::vector < Scan > theoretic_scans;
+		read_scans_from_tsv(THEORETIC_FILE_NAMES[i], theoretic_scans);
+		for (unsigned int j = 0; j < theoretic_scans.size(); j++) {
+			theoretic_scans_maps[i][theoretic_scans[j].id] = theoretic_scans[j];
+		}
 	}
-	go_through_res(theoretic_scans_map, "Thermo_Xtraxt", THERMO_XTRACT_FILE_NAME);
-	go_through_res(theoretic_scans_map, "MS_Align", MS_ALIGN_FILE_NAME);
-
+	/*
+	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
+		std::cerr << "Looking for scans with no peaks in part " << i + 1 << " of MS-Align+ results.\n";
+		ZeroPeaksCounter ms_align_zero_peaks("MS_Align", theoretic_scans_maps[i]);
+		go_through_res(theoretic_scans_maps[i], "MS_Align", MS_ALIGN_FILE_NAMES[i], ms_align_zero_peaks);
+	}
+	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
+		std::cout << "Looking for scans with no peaks in part " << i + 1 << " of Thermo Xtract results.\n";
+		ZeroPeaksCounter thermo_zero_peaks("Thermo_Xtract", theoretic_scans_maps[i]);
+		go_through_res(theoretic_scans_maps[i], "Thermo_Xtraxt", THERMO_XTRACT_FILE_NAMES[i], thermo_zero_peaks);
+	}
+	*/
+	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
+		NeutralCounter thermo_counter;
+		go_through_res(theoretic_scans_maps[i], "Thermo_Xtraxt", THERMO_XTRACT_FILE_NAMES[i], thermo_counter);
+		std::cout << thermo_counter.get_number() << " neutral mass scans found in part " << i + 1 << " of Thermo Xtract output." << std::endl;
+	}
+	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
+		NeutralCounter ms_align_counter;
+		go_through_res(theoretic_scans_maps[i], "MS_Align", MS_ALIGN_FILE_NAMES[i], ms_align_counter);
+		std::cout << ms_align_counter.get_number() << " neutral mass scans found in part " << i + 1 << " of MS-ALign+ output." << std::endl;
+	}
+	
 	std::cin.clear();
 	std::cin.sync();
 	std::cin.get();
