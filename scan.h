@@ -23,24 +23,27 @@ struct Scan {
 	void operator= (Scan &other);
 };
 
+enum deconv_program {MS_Align, Thermo_Xtract};
+const std::string program_name[] = { "MS Align", "Thermo Xtract" };
+
 const std::string MGF_SCAN_BEGINNING = "BEGIN IONS";
 const std::string MGF_SCAN_ENDING = "END IONS";
 const std::string ID_PREF = "TITLE=";
 const std::string PEPMASS_PREF = "PEPMASS=";
 const std::string CHARGE_PREF = "CHARGE=";
+const double DA = 1.007276;
+const int MAX_PEPTIDE_LENGTH = 70;
 
 void reset_scan(Scan &scan);
 
 Scan parse_tsv_line(std::string &line);
-
-void read_scans_from_tsv(std::string filename, std::vector < Scan > &scans);
 
 int thermo_xtract_id(std::string);
 
 int msalign_id(std::string);
 
 template < class Func >
-void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::string program, std::string filename, Func &action) {
+void go_through_mgf(deconv_program format, std::string filename, Func &action) {
 	std::ifstream file(filename);
 	Scan cur_scan;
 	while (!file.eof()) {
@@ -53,7 +56,7 @@ void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::
 			action(cur_scan);
 		}
 		else if (line.compare(0, ID_PREF.size(), ID_PREF) == 0) {
-			if (program[0] == 'M') {
+			if (format == MS_Align) {
 				cur_scan.id = msalign_id(line);
 			}
 			else {
@@ -61,10 +64,12 @@ void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::
 			}
 		}
 		else if (line.compare(0, PEPMASS_PREF.size(), PEPMASS_PREF) == 0) {
-			cur_scan.mass = std::stod(line.substr(PEPMASS_PREF.size(), line.size() - PEPMASS_PREF.size()));
-			int space_pos = line.find(' ');
-			if (space_pos != std::string::npos) {
-				cur_scan.mass_2 = std::stod(line.substr(space_pos, line.size() - space_pos));
+			cur_scan.mass = std::stod(line.substr(PEPMASS_PREF.size(), line.size() - PEPMASS_PREF.size())) - DA;
+			if (format == Thermo_Xtract) {
+				int space_pos = line.find(' ');
+				if (space_pos != std::string::npos) {
+					cur_scan.mass_2 = std::stod(line.substr(space_pos, line.size() - space_pos));
+				}
 			}
 		}
 		else if (line.compare(0, CHARGE_PREF.size(), CHARGE_PREF) == 0) {
@@ -82,3 +87,27 @@ void go_through_res(std::unordered_map < int, Scan > &theoretic_scans_map, std::
 	}
 	file.close();
 }
+
+template < class Func >
+void go_through_tsv(std::string filename, Func f) {
+	std::ifstream file(filename);
+	std::string line;
+	while (getline(file, line)) {
+		if (line[0] != '#') {
+			Scan cur_scan = parse_tsv_line(line);
+			f(cur_scan);
+		}
+	}
+	file.close();
+}
+
+class ScansMapCreator {
+private:
+	std::unordered_map < int, Scan > &scans_map;
+public:
+	ScansMapCreator(std::unordered_map < int, Scan > &map_to_fill);
+
+	void operator() (Scan &scan);
+
+	std::unordered_map < int, Scan > &get_map();
+};

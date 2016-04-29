@@ -31,7 +31,7 @@ void Scan::operator=(Scan &other) {
 
 	mass_2 = other.mass_2;
 }
-
+#include <iostream>
 Scan parse_tsv_line(std::string &line) {
 	const std::string ID_PREF = "scan=";
 
@@ -46,24 +46,15 @@ Scan parse_tsv_line(std::string &line) {
 	line_stream >> ans.isotope_error;
 	line_stream >> ans.precursor_error;
 	line_stream >> ans.charge;
-	//ans.mass *= ans.charge;
-	for (int i = 0; i < 5; i++) {
-		line_stream >> temp;
-	}
+	ans.mass = (ans.mass - DA) * ans.charge;
+	line_stream >> ans.peptide;
+	line_stream >> ans.protein;
+	line_stream >> ans.de_novo_scope;
+	line_stream >> ans.msgf_scope;
+	line_stream >> ans.spec_e_value;
 	line_stream >> ans.e_value;
 
 	return ans;
-}
-
-void read_scans_from_tsv(std::string filename, std::vector < Scan > &scans) {
-	std::ifstream file(filename);
-	std::string line;
-	while (getline(file, line)) {
-		if (line[0] != '#') {
-			scans.push_back(parse_tsv_line(line));
-		}
-	}
-	file.close();
 }
 
 int msalign_id(std::string title) {
@@ -73,4 +64,15 @@ int msalign_id(std::string title) {
 int thermo_xtract_id(std::string title) {
 	int eq_pos = title.find_last_of("=");
 	return std::stoi(title.substr(eq_pos + 1, title.size() - eq_pos - 2));
+}
+
+ScansMapCreator::ScansMapCreator(std::unordered_map < int, Scan > &map_to_fill):
+	scans_map(map_to_fill) {};
+
+void ScansMapCreator::operator() (Scan &scan) {
+	scans_map[scan.id] = scan;
+}
+
+std::unordered_map < int, Scan > &ScansMapCreator::get_map() {
+	return scans_map;
 }
