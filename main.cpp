@@ -323,14 +323,143 @@ void check_scans_finding() {
 	}
 }
 
+class MassRatioCounter {
+private:
+	std::vector < int > counters;
+
+	std::unordered_map < int, Scan > &reference_scans;
+
+	static const size_t SECTIONS_NUMBER = 21;
+public:
+	MassRatioCounter(std::unordered_map < int, Scan > &reference_map):
+		counters(SECTIONS_NUMBER), reference_scans(reference_map) {}
+
+	void operator ()(Scan &scan) {
+		std::unordered_map < int, Scan >::iterator scan_in_ref = reference_scans.find(scan.id);
+		if (scan_in_ref != reference_scans.end()) {
+			Scan &reference_scan = scan_in_ref->second;
+			double ratio = scan.mass / reference_scan.mass;
+			int section = std::min(static_cast <int>(ratio * 10), 20);
+			counters[section]++;
+		}
+	}
+
+	std::vector < int > get_results() {
+		return counters;
+	}
+};
+
+class MassPartCounter {
+private:
+	const size_t MULTS_NUMBER;
+
+	const std::vector < int > mults;
+
+	std::vector < int > counters;
+
+	std::vector < int > close_counters;
+
+	std::unordered_map < int, Scan > &reference_scans;
+
+	const double TOLERABLE_ERROR = 1e-5;
+
+	const double CLOSE_TO_MATCH = 1e-4;
+public:
+	MassPartCounter(std::unordered_map < int, Scan > &new_map, const std::vector < int> &new_mults):
+		MULTS_NUMBER(new_mults.size()), mults(new_mults), reference_scans(new_map), counters(MULTS_NUMBER),
+		close_counters(MULTS_NUMBER) {};
+
+	void operator() (Scan &scan) {
+		std::unordered_map < int, Scan >::iterator scan_in_ref = reference_scans.find(scan.id);
+		if (scan_in_ref != reference_scans.end()) {
+			Scan &reference_scan = scan_in_ref->second;
+			for (int i = 0; i < MULTS_NUMBER; ++i) {
+				if (abs(scan.mass * mults[i] - reference_scan.mass) <= reference_scan.mass * TOLERABLE_ERROR) {
+					std::cout << "Match:\n";
+					++counters[i];
+				}
+				if (abs(scan.mass * mults[i] - reference_scan.mass) <= reference_scan.mass * CLOSE_TO_MATCH) {
+					std::cout << "Scan " << scan.id << " has mass " << scan.mass << " and " <<
+						reference_scan.mass << " in theory.\n";
+					++close_counters[i];
+				}
+			}
+		}
+	}
+
+	std::vector < int > get_res(){
+		return counters;
+	}
+
+	std::vector < int > get_close_res() {
+		return close_counters;
+	}
+};
+
+void calc_mass_parts() {
+	const std::string filename = "thermo_mass_ratio_distribution";
+	for (int i = 0; i < GROUPS_OF_SCANS; ++i) {
+		std::cout << "Calculating mass part distribution for " << THERMO_XTRACT_FILE_NAMES[i] << std::endl;
+
+		std::unordered_map < int, Scan > theoretic_scans;
+		ScansMapCreator theoretic_collector(theoretic_scans);
+		go_through_tsv(THEORETIC_FILE_NAMES[i], theoretic_collector);
+
+		MassRatioCounter ratio_counter(theoretic_scans);
+		go_through_mgf(Thermo_Xtract, THERMO_XTRACT_FILE_NAMES[i], ratio_counter);
+		std::vector < int > distribution = ratio_counter.get_results();
+		
+		std::ofstream fout(filename + std::to_string(i) + ".txt");
+		for (int i = 0; i < distribution.size(); ++i) {
+			if (i == distribution.size() - 1) {
+				fout << i * 10 << "%+ " << distribution[i] << std::endl;
+			}
+			else {
+				fout << i * 10 << "%-" << (i + 1) * 10 << "% " << distribution[i] << std::endl;
+			}
+		}
+		fout.close();
+
+		std::cout << "Done." << std::endl;
+	}
+}
+
+void check_thermo_scans_for_ratio() {
+	const std::vector < int > ratios = { 3, 4, 5 };
+	for (int i = 0; i < GROUPS_OF_SCANS; ++i) {
+		std::cout << "Looking for integer mass ratios in " << THERMO_XTRACT_FILE_NAMES[i] << std::endl;
+
+		std::unordered_map < int, Scan > theoretic_scans;
+		ScansMapCreator theoretic_collector(theoretic_scans);
+		go_through_tsv(THEORETIC_FILE_NAMES[i], theoretic_collector);
+
+		MassPartCounter ratio_counter(theoretic_scans, ratios);
+		go_through_mgf(Thermo_Xtract, THERMO_XTRACT_FILE_NAMES[i], ratio_counter);
+		
+		std::vector < int > quants = ratio_counter.get_res();
+		for (int j = 0; j < ratios.size(); ++j) {
+			std::cout << quants[j] << " scan(s) is/are " << ratios[j] << " times less that in theory.\n";
+		}
+
+		std::vector < int > near_match = ratio_counter.get_close_res();
+		for (int j = 0; j < ratios.size(); ++j) {
+			std::cout << near_match[j] << " scan(s) is/are approximately " << ratios[j] << " times less that in theory.\n";
+		}
+		std::cout << std::endl;
+	}
+}
+
 int main() {
 	std::cout.sync_with_stdio(false);
-	
+	std::cout.precision(10);
+
 	//check_zero_mass();
 	//check_no_peaks_scans();
 	//check_inclusion();
 	//check_same_mass();
-	check_scans_finding();
+	//check_scans_finding();
+	//calc_mass_parts();
+	check_thermo_scans_for_ratio();
 
 	std::cin.clear();
 	std::cin.sync();
