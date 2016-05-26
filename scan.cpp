@@ -31,7 +31,7 @@ void Scan::operator=(Scan &other) {
 
 	mass_2 = other.mass_2;
 }
-#include <iostream>
+
 Scan parse_tsv_line(std::string &line) {
 	const std::string ID_PREF = "scan=";
 
@@ -66,13 +66,16 @@ int thermo_xtract_id(std::string title) {
 	return std::stoi(title.substr(eq_pos + 1, title.size() - eq_pos - 2));
 }
 
-ScansMapCreator::ScansMapCreator(std::unordered_map < int, Scan > &map_to_fill):
-	scans_map(map_to_fill) {};
+ScansMapCreator::ScansMapCreator(): scans_map(new std::unordered_map < int, Scan >) {};
 
 void ScansMapCreator::operator() (Scan &scan) {
-	scans_map[scan.id] = scan;
+	(*scans_map)[scan.id] = scan;
 }
 
-std::unordered_map < int, Scan > &ScansMapCreator::get_map() {
-	return scans_map;
+std::unordered_map < int, Scan > ScansMapCreator::get_map() {
+	return *scans_map;
+}
+
+ScansMapCreator::~ScansMapCreator() {
+	delete scans_map;
 }

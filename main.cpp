@@ -6,23 +6,12 @@
 #include <unordered_map>
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+
 #include "scan.h"
+#include "zero_mass.h"
 
-const double EPS = 1e-5;
-
-const int GROUPS_OF_SCANS = 2;
-const std::string THEORETIC_FILE_NAMES[GROUPS_OF_SCANS] = { "140509QXc1_car_anh_tryp_001.tsv", "140509QXc1_car_anh_tryp_004.tsv" };
-const std::string MS_ALIGN_FILE_NAMES[GROUPS_OF_SCANS] = { "140509QXc1_car_anh_tryp_001_msdeconv.mgf", "140509QXc1_car_anh_tryp_004_msdeconv.mgf" };
-const std::string THERMO_XTRACT_FILE_NAMES[GROUPS_OF_SCANS] = { "140509QXc1_car_anh_tryp_001_xtract.mgf", "140509QXc1_car_anh_tryp_004_xtract.mgf" };
 const double ERROR_BORDER = 1e-10;
-
-void find_zero_mass(std::unordered_map < int, Scan > &theoretic_scans_map,
-	deconv_program program, std::string filename) {
-	std::cout << "Looking for zero masses in file " << filename << std::endl;
-	int counter = 0;
-	go_through_mgf(program, filename, [&counter](Scan &scan) {if (abs(scan.mass) < EPS) ++counter;});
-	std::cout << counter << " zero mass scans found." << std::endl;
-}
 
 class ZeroPeaksCounter {
 private:
@@ -178,58 +167,38 @@ void find_same_mass(std::unordered_map < int, Scan > theoretic_scans_map,
 	std::cout << ms_tester.get_match_number() << " scans have the same mass in both files.\n";
 }
 
-void check_zero_mass() {
-	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
-		std::unordered_map < int, Scan > theoretic_scans_map;
-		ScansMapCreator map_creator(theoretic_scans_map);
-		go_through_tsv(THEORETIC_FILE_NAMES[i], map_creator);
+void check_no_peaks_scans(std::vector < std::string > filenames) {
+	for (std::string pref: filenames) {
+		ScansMapCreator map_creator;
+		go_through_tsv(pref + TSV_SUF, map_creator);
+		std::unordered_map < int, Scan > theoretic_scans_map = map_creator.get_map();
 
-		find_zero_mass(theoretic_scans_map, MS_Align, MS_ALIGN_FILE_NAMES[i]);
-		find_zero_mass(theoretic_scans_map, Thermo_Xtract, THERMO_XTRACT_FILE_NAMES[i]);
+		find_no_peaks_scans(theoretic_scans_map, MS_Align, pref + MSDECONV_SUF);
+		find_no_peaks_scans(theoretic_scans_map, Thermo_Xtract, pref + XTRACT_SUF);
 	}
 	std::cout << std::endl;
 }
 
-void check_no_peaks_scans() {
-	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
-		std::unordered_map < int, Scan > theoretic_scans_map;
-		ScansMapCreator map_creator(theoretic_scans_map);
-		go_through_tsv(THEORETIC_FILE_NAMES[i], map_creator);
+void check_inclusion(std::vector < std::string > filenames) {
+	for (std::string pref: filenames) {
+		ScansMapCreator map_creator;
+		go_through_tsv(pref + TSV_SUF, map_creator);
+		std::unordered_map < int, Scan > theoretic_scans_map = map_creator.get_map();
 
-		find_no_peaks_scans(theoretic_scans_map, MS_Align, MS_ALIGN_FILE_NAMES[i]);
-		find_no_peaks_scans(theoretic_scans_map, Thermo_Xtract, THERMO_XTRACT_FILE_NAMES[i]);
+		test_inclusion(theoretic_scans_map, pref + XTRACT_SUF, pref + MSDECONV_SUF);
 	}
 	std::cout << std::endl;
 }
 
-void check_inclusion() {
-	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
-		std::unordered_map < int, Scan > theoretic_scans_map;
-		ScansMapCreator map_creator(theoretic_scans_map);
-		go_through_tsv(THEORETIC_FILE_NAMES[i], map_creator);
-		test_inclusion(theoretic_scans_map, THERMO_XTRACT_FILE_NAMES[i], MS_ALIGN_FILE_NAMES[i]);
+void check_same_mass(std::vector < std::string > filenames) {
+	for (std::string pref: filenames) {
+		ScansMapCreator map_creator;
+		go_through_tsv(pref + TSV_SUF, map_creator);
+		std::unordered_map < int, Scan > theoretic_scans_map = map_creator.get_map();
+
+		find_same_mass(theoretic_scans_map, pref + XTRACT_SUF, pref + MSDECONV_SUF);
 	}
 	std::cout << std::endl;
-}
-
-void check_same_mass() {
-	std::unordered_map < int, Scan > theoretic_scans_maps[GROUPS_OF_SCANS];
-	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
-		ScansMapCreator map_creator(theoretic_scans_maps[i]);
-		go_through_tsv(THEORETIC_FILE_NAMES[i], map_creator);
-	}
-
-	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
-		find_same_mass(theoretic_scans_maps[i], THERMO_XTRACT_FILE_NAMES[i], MS_ALIGN_FILE_NAMES[i]);
-	}
-	std::cout << std::endl;
-}
-
-void make_theoretic_maps(std::unordered_map < int, Scan > *theoretic_scans_maps) {
-	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
-		ScansMapCreator map_creator(theoretic_scans_maps[i]);
-		go_through_tsv(THEORETIC_FILE_NAMES[i], map_creator);
-	}
 }
 
 class ScanDistributionCounter {
@@ -259,14 +228,6 @@ void write_vector(std::vector < T > &vect, std::string filename) {
 	fout.close();
 }
 
-void check_lengh_distribution() {
-	for (int i = 0; i < GROUPS_OF_SCANS; i++) {
-		std::vector < int > dist = find_lengh_distribution(THEORETIC_FILE_NAMES[i]);
-		write_vector(dist, "distribution" + std::to_string(i) + ".txt");
-	}
-}
-
-
 class MassMatchChecker {
 private:
 	std::unordered_map < int, Scan > &experimental_scans;
@@ -290,9 +251,9 @@ void check_mass_calculation(std::string theoretic_filename, std::string experime
 	
 	std::cout << "Counting correct masses in " << experimental_filename << std::endl;
 	
-	std::unordered_map < int, Scan > output;
-	ScansMapCreator scans_map_creator(output);
+	ScansMapCreator scans_map_creator;
 	go_through_mgf(program, experimental_filename, scans_map_creator);
+	std::unordered_map < int, Scan > output = scans_map_creator.get_map();
 
 	std::vector < int > correct(MAX_PEPTIDE_LENGTH + 1);
 	MassMatchChecker checker(output, correct);
@@ -310,16 +271,16 @@ void check_mass_calculation(std::string theoretic_filename, std::string experime
 	write_vector(percent, output_filename);
 }
 
-void check_scans_finding() {
-	for (int i = 0; i < GROUPS_OF_SCANS; ++i) {
-		std::cout << "Calculating peptide lengh distribution for " << THEORETIC_FILE_NAMES[i] << std::endl;
-		std::vector < int > dist = find_lengh_distribution(THEORETIC_FILE_NAMES[i]);
-		write_vector(dist, "distribution" + std::to_string(i) + ".txt");
+void check_scans_finding(std::vector < std::string > filename) {
+	for (std::string pref: filename) {
+		std::cout << "Calculating peptide lengh distribution for " << pref + TSV_SUF << std::endl;
+		std::vector < int > dist = find_lengh_distribution(pref + TSV_SUF);
+		write_vector(dist, "distribution" + pref + ".txt");
 
-		///check_mass_calculation(THEORETIC_FILE_NAMES[i], MS_ALIGN_FILE_NAMES[i], MS_Align, dist, "MS" + std::to_string(i) + ".txt");
-		check_mass_calculation(THEORETIC_FILE_NAMES[i], THERMO_XTRACT_FILE_NAMES[i], Thermo_Xtract, dist, "thermo" + std::to_string(i) + ".txt");
+		check_mass_calculation(pref + TSV_SUF, pref + MSDECONV_SUF, MS_Align, dist, "MS" + pref + ".txt");
+		check_mass_calculation(pref + TSV_SUF, pref + XTRACT_SUF, Thermo_Xtract, dist, "thermo" + pref + ".txt");
 
-		std::cout << THEORETIC_FILE_NAMES[i] << " is done." << std::endl;
+		std::cout << pref + TSV_SUF << " is done." << std::endl;
 	}
 }
 
@@ -396,26 +357,26 @@ public:
 	}
 };
 
-void calc_mass_parts() {
-	const std::string filename = "thermo_mass_ratio_distribution";
-	for (int i = 0; i < GROUPS_OF_SCANS; ++i) {
-		std::cout << "Calculating mass part distribution for " << THERMO_XTRACT_FILE_NAMES[i] << std::endl;
+void calc_mass_parts(std::vector < std::string > filenames) {
+	const std::string output_filename_pref = "thermo_mass_ratio_distribution";
+	for (std::string pref: filenames) {
+		std::cout << "Calculating mass part distribution for " << pref + XTRACT_SUF << std::endl;
 
-		std::unordered_map < int, Scan > theoretic_scans;
-		ScansMapCreator theoretic_collector(theoretic_scans);
-		go_through_tsv(THEORETIC_FILE_NAMES[i], theoretic_collector);
+		ScansMapCreator theoretic_collector;
+		go_through_tsv(pref + TSV_SUF, theoretic_collector);
+		std::unordered_map < int, Scan > theoretic_scans = theoretic_collector.get_map();
 
 		MassRatioCounter ratio_counter(theoretic_scans);
-		go_through_mgf(Thermo_Xtract, THERMO_XTRACT_FILE_NAMES[i], ratio_counter);
+		go_through_mgf(Thermo_Xtract, pref + XTRACT_SUF, ratio_counter);
 		std::vector < int > distribution = ratio_counter.get_results();
 		
-		std::ofstream fout(filename + std::to_string(i) + ".txt");
-		for (int i = 0; i < distribution.size(); ++i) {
-			if (i == distribution.size() - 1) {
-				fout << i * 10 << "%+ " << distribution[i] << std::endl;
+		std::ofstream fout(output_filename_pref + pref + ".txt");
+		for (int j = 0; j < distribution.size(); ++j) {
+			if (j == distribution.size() - 1) {
+				fout << j * 10 << "%+ " << distribution[j] << std::endl;
 			}
 			else {
-				fout << i * 10 << "%-" << (i + 1) * 10 << "% " << distribution[i] << std::endl;
+				fout << j * 10 << "%-" << (j + 1) * 10 << "% " << distribution[j] << std::endl;
 			}
 		}
 		fout.close();
@@ -424,17 +385,17 @@ void calc_mass_parts() {
 	}
 }
 
-void check_thermo_scans_for_ratio() {
+void check_thermo_scans_for_ratio(std::vector < std::string > filenames) {
 	const std::vector < int > ratios = { 3, 4, 5 };
-	for (int i = 0; i < GROUPS_OF_SCANS; ++i) {
-		std::cout << "Looking for integer mass ratios in " << THERMO_XTRACT_FILE_NAMES[i] << std::endl;
+	for (std::string pref: filenames) {
+		std::cout << "Looking for integer mass ratios in " << pref + XTRACT_SUF << std::endl;
 
-		std::unordered_map < int, Scan > theoretic_scans;
-		ScansMapCreator theoretic_collector(theoretic_scans);
-		go_through_tsv(THEORETIC_FILE_NAMES[i], theoretic_collector);
+		ScansMapCreator theoretic_collector;
+		go_through_tsv(pref + TSV_SUF, theoretic_collector);
+		std::unordered_map < int, Scan > theoretic_scans = theoretic_collector.get_map();
 
 		MassPartCounter ratio_counter(theoretic_scans, ratios);
-		go_through_mgf(Thermo_Xtract, THERMO_XTRACT_FILE_NAMES[i], ratio_counter);
+		go_through_mgf(Thermo_Xtract, pref + XTRACT_SUF, ratio_counter);
 		
 		std::vector < int > quants = ratio_counter.get_res();
 		for (int j = 0; j < ratios.size(); ++j) {
@@ -449,17 +410,87 @@ void check_thermo_scans_for_ratio() {
 	}
 }
 
-int main() {
+class ArgParser {
+private:
+	std::vector < std::string > filenames;
+
+	std::vector < int > tasks;
+
+	const char *FILENAME_KEY = "-f";
+	const char *LIST_KEY = "-l";
+	const char *TASK_KEY = "-t";
+public:
+	ArgParser(int argc, char **argv) {
+		int cur_arg = 1;
+		while (cur_arg < argc) {
+			if (strcmp(FILENAME_KEY, argv[cur_arg]) == 0) {
+				filenames.push_back(std::string(argv[++cur_arg]));
+			}
+			else if (strcmp(LIST_KEY, argv[cur_arg]) == 0) {
+				std::string list_name(argv[++cur_arg]);
+				std::ifstream file(list_name);
+				std::string line;
+				while (getline(file, line)) {
+					filenames.push_back(line);
+				}
+				file.close();
+			}
+			else if (strcmp(TASK_KEY, argv[cur_arg]) == 0) {
+				tasks.push_back(std::stoi(argv[++cur_arg]));
+			}
+			cur_arg++;
+		}
+	}
+
+	std::vector < std::string > get_filenames() {
+		return filenames;
+	}
+
+	std::vector < int > get_tasks() {
+		return tasks;
+	}
+};
+
+int main(int argc, char **argv) {
 	std::cout.sync_with_stdio(false);
 	std::cout.precision(10);
 
-	//check_zero_mass();
-	//check_no_peaks_scans();
-	//check_inclusion();
-	//check_same_mass();
-	//check_scans_finding();
-	//calc_mass_parts();
-	check_thermo_scans_for_ratio();
+	ArgParser args(argc, argv);
+	std::vector < std::string > filenames = args.get_filenames();
+	std::vector < int > tasks = args.get_tasks();
+
+	for (int t: tasks) {
+		switch (t) {
+			case 1: {
+				check_zero_mass(filenames);
+				break;
+			}
+			case 2: {
+				check_no_peaks_scans(filenames);
+				break;
+			}
+			case 3: {
+				check_inclusion(filenames);
+				break;
+			}
+			case 4: {
+				check_same_mass(filenames);
+				break;
+			}
+			case 5: {
+				check_scans_finding(filenames);
+				break;
+			}
+			case 6: {
+				calc_mass_parts(filenames);
+				break;
+			}
+			case 7: {
+				check_thermo_scans_for_ratio(filenames);
+				break;
+			}
+		}
+	}
 
 	std::cin.clear();
 	std::cin.sync();

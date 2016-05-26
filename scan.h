@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <fstream>
 
 struct Scan {
 	int id;
@@ -33,6 +34,10 @@ const std::string PEPMASS_PREF = "PEPMASS=";
 const std::string CHARGE_PREF = "CHARGE=";
 const double DA = 1.007276;
 const int MAX_PEPTIDE_LENGTH = 70;
+const double EPS = 1e-5;
+const std::string TSV_SUF = ".tsv";
+const std::string XTRACT_SUF = "_xtract.mgf";
+const std::string MSDECONV_SUF = "_msdeconv.mgf";
 
 void reset_scan(Scan &scan);
 
@@ -89,25 +94,26 @@ void go_through_mgf(deconv_program format, std::string filename, Func &action) {
 }
 
 template < class Func >
-void go_through_tsv(std::string filename, Func f) {
+void go_through_tsv(std::string filename, Func &f) {
 	std::ifstream file(filename);
 	std::string line;
+	getline(file, line);
 	while (getline(file, line)) {
-		if (line[0] != '#') {
-			Scan cur_scan = parse_tsv_line(line);
-			f(cur_scan);
-		}
+		Scan cur_scan = parse_tsv_line(line);
+		f(cur_scan);
 	}
 	file.close();
 }
 
 class ScansMapCreator {
 private:
-	std::unordered_map < int, Scan > &scans_map;
+	std::unordered_map < int, Scan > *scans_map;
 public:
-	ScansMapCreator(std::unordered_map < int, Scan > &map_to_fill);
+	ScansMapCreator();
 
 	void operator() (Scan &scan);
 
-	std::unordered_map < int, Scan > &get_map();
+	std::unordered_map < int, Scan > get_map();
+
+	~ScansMapCreator();
 };
