@@ -3,4 +3,4 @@
 #include <vector>
 #include <string>
 
-void check_zero_mass(std::vector < std::string >);
+void check_same_mass(std::vector < std::string >);

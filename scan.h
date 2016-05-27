@@ -35,6 +35,7 @@ const std::string CHARGE_PREF = "CHARGE=";
 const double DA = 1.007276;
 const int MAX_PEPTIDE_LENGTH = 70;
 const double EPS = 1e-5;
+const double ERROR_BORDER = 1e-10;
 const std::string TSV_SUF = ".tsv";
 const std::string XTRACT_SUF = "_xtract.mgf";
 const std::string MSDECONV_SUF = "_msdeconv.mgf";
@@ -107,13 +108,44 @@ void go_through_tsv(std::string filename, Func &f) {
 
 class ScansMapCreator {
 private:
-	std::unordered_map < int, Scan > *scans_map;
+	std::unordered_map < int, Scan > scans_map;
 public:
-	ScansMapCreator();
-
 	void operator() (Scan &scan);
 
 	std::unordered_map < int, Scan > get_map();
+};
 
-	~ScansMapCreator();
+
+class EValueTester {
+private:
+	const double E_VALUE_BORDER;
+	std::unordered_map < int, Scan > &theoretic_map;
+public:
+	EValueTester(std::unordered_map < int, Scan > &new_map, double new_e_value_border) :
+		E_VALUE_BORDER(new_e_value_border), theoretic_map(new_map) {}
+
+	bool operator()(Scan &scan) {
+		std::unordered_map < int, Scan >::iterator prediction = theoretic_map.find(scan.id);
+		return prediction != theoretic_map.end() && prediction->second.e_value < E_VALUE_BORDER;
+	}
+};
+
+template < class Func >
+class ScansCollector {
+private:
+	std::unordered_map < int, Scan > &good_scans;
+	Func check_scan;
+public:
+	ScansCollector(std::unordered_map < int, Scan > &new_map, Func new_checker) :
+		check_scan(new_checker), good_scans(new_map) {}
+
+	void operator() (Scan &scan) {
+		if (check_scan(scan)) {
+			good_scans[scan.id] = scan;
+		}
+	}
+
+	std::unordered_map < int, Scan >& get_map() {
+		return good_scans;
+	}
 };

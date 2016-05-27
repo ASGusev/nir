@@ -66,16 +66,10 @@ int thermo_xtract_id(std::string title) {
 	return std::stoi(title.substr(eq_pos + 1, title.size() - eq_pos - 2));
 }
 
-ScansMapCreator::ScansMapCreator(): scans_map(new std::unordered_map < int, Scan >) {};
-
 void ScansMapCreator::operator() (Scan &scan) {
-	(*scans_map)[scan.id] = scan;
+	scans_map[scan.id] = scan;
 }
 
 std::unordered_map < int, Scan > ScansMapCreator::get_map() {
-	return *scans_map;
-}
-
-ScansMapCreator::~ScansMapCreator() {
-	delete scans_map;
+	return scans_map;
 }
