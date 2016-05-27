@@ -73,3 +73,11 @@ void ScansMapCreator::operator() (Scan &scan) {
 std::unordered_map < int, Scan > ScansMapCreator::get_map() {
 	return scans_map;
 }
+
+EValueTester::EValueTester(std::unordered_map < int, Scan > &new_map, double new_e_value_border) :
+	E_VALUE_BORDER(new_e_value_border), theoretic_map(new_map) {}
+
+bool EValueTester::operator()(Scan &scan) {
+	std::unordered_map < int, Scan >::iterator prediction = theoretic_map.find(scan.id);
+	return prediction != theoretic_map.end() && (prediction->second.e_value < E_VALUE_BORDER);
+}

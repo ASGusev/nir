@@ -3,19 +3,25 @@
 
 class ScanDistributionCounter {
 private:
-	std::vector < int > &distribution;
+	std::vector < int > distribution;
 public:
-	ScanDistributionCounter(std::vector < int > &new_dist): distribution(new_dist) {}
+	ScanDistributionCounter(): distribution(MAX_PEPTIDE_LENGTH + 1) {}
 
 	void operator()(Scan &scan) {
 		++distribution[scan.peptide.size()];
+	}
+
+	std::vector < int > get_distribution() {
+		return distribution;
 	}
 };
 
 class MassMatchChecker {
 private:
 	std::unordered_map < int, Scan > &experimental_scans;
+
 	std::vector < int > &matching_masses;
+	
 	const double TOLERABLE_ERROR = 1e-5;
 public:
 	MassMatchChecker(std::unordered_map < int, Scan > &scans_map, std::vector < int > &new_masses) :
@@ -31,9 +37,9 @@ public:
 };
 
 std::vector < int > find_lengh_distribution(std::string filename) {
-	std::vector < int > distribution(MAX_PEPTIDE_LENGTH + 1);
-	ScanDistributionCounter counter(distribution);
+	ScanDistributionCounter counter;
 	go_through_tsv(filename, counter);
+	std::vector < int > distribution = counter.get_distribution();
 	return distribution;
 }
 
@@ -72,9 +78,11 @@ void check_mass_calculation(std::string theoretic_filename, std::string experime
 }
 
 void check_scans_finding(std::vector < std::string > filename) {
-	for (std::string pref : filename) {
+	for (std::string pref: filename) {
 		std::cout << "Calculating peptide lengh distribution for " << pref + TSV_SUF << std::endl;
-		std::vector < int > dist = find_lengh_distribution(pref + TSV_SUF);
+		ScanDistributionCounter counter;
+		go_through_tsv(pref + TSV_SUF, counter);
+		std::vector < int > dist = counter.get_distribution();
 		write_vector(dist, "distribution" + pref + ".txt");
 
 		check_mass_calculation(pref + TSV_SUF, pref + MSDECONV_SUF, MS_Align, dist, "MS" + pref + ".txt");

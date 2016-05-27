@@ -119,21 +119,19 @@ public:
 class EValueTester {
 private:
 	const double E_VALUE_BORDER;
+
 	std::unordered_map < int, Scan > &theoretic_map;
 public:
-	EValueTester(std::unordered_map < int, Scan > &new_map, double new_e_value_border) :
-		E_VALUE_BORDER(new_e_value_border), theoretic_map(new_map) {}
+	EValueTester(std::unordered_map < int, Scan > &new_map, double new_e_value_border);
 
-	bool operator()(Scan &scan) {
-		std::unordered_map < int, Scan >::iterator prediction = theoretic_map.find(scan.id);
-		return prediction != theoretic_map.end() && prediction->second.e_value < E_VALUE_BORDER;
-	}
+	bool operator()(Scan &scan);
 };
 
 template < class Func >
 class ScansCollector {
 private:
 	std::unordered_map < int, Scan > &good_scans;
+
 	Func check_scan;
 public:
 	ScansCollector(std::unordered_map < int, Scan > &new_map, Func new_checker) :

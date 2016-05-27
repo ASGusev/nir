@@ -35,25 +35,20 @@ public:
 	}
 };
 
-void test_inclusion(std::unordered_map < int, Scan > theoretic_scans_map,
-	std::string thermo_filename, std::string ms_align_file_name) {
-	const double GOOD_BORDER = 1e-20;
-	EValueTester scan_checker(theoretic_scans_map, GOOD_BORDER);
-	std::unordered_map < int, Scan > good_thermo_scans;
-	ScansCollector < EValueTester > thermo_storage(good_thermo_scans, scan_checker);
-	go_through_mgf(Thermo_Xtract, thermo_filename, thermo_storage);
-
-	ComparePeaks ms_align_tester(good_thermo_scans);
-	go_through_mgf(MS_Align, ms_align_file_name, ms_align_tester);
-}
-
 void check_inclusion(std::vector < std::string > filenames) {
 	for (std::string pref : filenames) {
 		ScansMapCreator map_creator;
 		go_through_tsv(pref + TSV_SUF, map_creator);
 		std::unordered_map < int, Scan > theoretic_scans_map = map_creator.get_map();
 
-		test_inclusion(theoretic_scans_map, pref + XTRACT_SUF, pref + MSDECONV_SUF);
+		const double GOOD_BORDER = 1e-20;
+		EValueTester scan_checker(theoretic_scans_map, GOOD_BORDER);
+		std::unordered_map < int, Scan > good_thermo_scans;
+		ScansCollector < EValueTester > thermo_storage(good_thermo_scans, scan_checker);
+		go_through_mgf(Thermo_Xtract, pref + XTRACT_SUF, thermo_storage);
+
+		ComparePeaks ms_align_tester(good_thermo_scans);
+		go_through_mgf(MS_Align, pref + MSDECONV_SUF, ms_align_tester);
 	}
 	std::cout << std::endl;
 }
