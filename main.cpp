@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
 				break;
 			}
 			case 5: {
-				check_scans_finding(filenames, args.get_eps());
+				check_finding(filenames, args.get_eps());
 				break;
 			}
 			case 6: {

@@ -81,7 +81,7 @@ void check_mass_calculation(std::string theoretic_filename, std::string experime
 	write_vector(percent, output_filename);
 }
 
-void check_scans_finding(std::vector < std::string > filename, double eps) {
+void check_finding(std::vector < std::string > filename, double eps) {
 	for (std::string pref: filename) {
 		std::cout << "Calculating peptide lengh distribution for " << pref + TSV_SUF << std::endl;
 		ScanDistributionCounter counter;

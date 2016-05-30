@@ -3,4 +3,4 @@
 #include <vector>
 #include <string>
 
-void check_scans_finding(std::vector < std::string >, double);
+void check_finding(std::vector < std::string >, double);
