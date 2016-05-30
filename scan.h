@@ -25,17 +25,16 @@ struct Scan {
 };
 
 enum deconv_program {MS_Align, Thermo_Xtract};
-const std::string program_name[] = { "MS Align", "Thermo Xtract" };
 
 const std::string MGF_SCAN_BEGINNING = "BEGIN IONS";
 const std::string MGF_SCAN_ENDING = "END IONS";
 const std::string ID_PREF = "TITLE=";
 const std::string PEPMASS_PREF = "PEPMASS=";
 const std::string CHARGE_PREF = "CHARGE=";
+
 const double DA = 1.007276;
 const int MAX_PEPTIDE_LENGTH = 70;
-const double EPS = 1e-5;
-const double ERROR_BORDER = 1e-10;
+
 const std::string TSV_SUF = ".tsv";
 const std::string XTRACT_SUF = "_xtract.mgf";
 const std::string MSDECONV_SUF = "_msdeconv.mgf";
@@ -50,6 +49,7 @@ int msalign_id(std::string);
 
 template < class Func >
 void go_through_mgf(deconv_program format, std::string filename, Func &action) {
+	const std::string DIGITS = "1234567890";
 	std::ifstream file(filename);
 	Scan cur_scan;
 	while (!file.eof()) {
@@ -80,7 +80,7 @@ void go_through_mgf(deconv_program format, std::string filename, Func &action) {
 		}
 		else if (line.compare(0, CHARGE_PREF.size(), CHARGE_PREF) == 0) {
 			int charge_beginning = CHARGE_PREF.size();
-			int charge_len = line.find_first_not_of("1234567890", charge_beginning) - charge_beginning;
+			int charge_len = line.find_first_not_of(DIGITS, charge_beginning) - charge_beginning;
 			cur_scan.charge = std::stoi(line.substr(charge_beginning, charge_len));
 		}
 		else if (line[0] >= '0' && line[0] <= '9') {

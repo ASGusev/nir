@@ -3,4 +3,4 @@
 #include <string>
 #include "scan.h"
 
-void check_inclusion(std::vector < std::string >);
+void check_inclusion(std::vector < std::string >, double, double);

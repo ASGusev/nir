@@ -20,19 +20,23 @@ class MassMatchChecker {
 private:
 	std::unordered_map < int, Scan > &experimental_scans;
 
-	std::vector < int > &matching_masses;
+	std::vector < int > matching_masses;
 	
-	const double TOLERABLE_ERROR = 1e-5;
+	const double EPS;
 public:
-	MassMatchChecker(std::unordered_map < int, Scan > &scans_map, std::vector < int > &new_masses) :
-		experimental_scans(scans_map), matching_masses(new_masses) {}
+	MassMatchChecker(std::unordered_map < int, Scan > &scans_map, double new_eps):
+		experimental_scans(scans_map), matching_masses(MAX_PEPTIDE_LENGTH + 1), EPS(new_eps) {}
 
 	void operator()(Scan &scan) {
 		std::unordered_map < int, Scan >::iterator experimental_scan = experimental_scans.find(scan.id);
 		if (experimental_scan != experimental_scans.end() &&
-			abs(scan.mass - experimental_scan->second.mass) <= scan.mass * TOLERABLE_ERROR) {
+			abs(scan.mass - experimental_scan->second.mass) <= scan.mass * EPS) {
 			++matching_masses[scan.peptide.size()];
 		}
+	}
+
+	std::vector < int > get_results() {
+		return matching_masses;
 	}
 };
 
@@ -53,7 +57,7 @@ void write_vector(std::vector < T > &vect, std::string filename) {
 }
 
 void check_mass_calculation(std::string theoretic_filename, std::string experimental_filename,
-	deconv_program program, std::vector < int > lenght_distribution, std::string output_filename) {
+	deconv_program program, std::vector < int > lenght_distribution, std::string output_filename, double eps) {
 
 	std::cout << "Counting correct masses in " << experimental_filename << std::endl;
 
@@ -61,9 +65,9 @@ void check_mass_calculation(std::string theoretic_filename, std::string experime
 	go_through_mgf(program, experimental_filename, scans_map_creator);
 	std::unordered_map < int, Scan > output = scans_map_creator.get_map();
 
-	std::vector < int > correct(MAX_PEPTIDE_LENGTH + 1);
-	MassMatchChecker checker(output, correct);
+	MassMatchChecker checker(output, eps);
 	go_through_tsv(theoretic_filename, checker);
+	std::vector < int > correct = checker.get_results();
 
 	std::vector < double > percent;
 	for (int j = 0; j <= MAX_PEPTIDE_LENGTH; ++j) {
@@ -77,7 +81,7 @@ void check_mass_calculation(std::string theoretic_filename, std::string experime
 	write_vector(percent, output_filename);
 }
 
-void check_scans_finding(std::vector < std::string > filename) {
+void check_scans_finding(std::vector < std::string > filename, double eps) {
 	for (std::string pref: filename) {
 		std::cout << "Calculating peptide lengh distribution for " << pref + TSV_SUF << std::endl;
 		ScanDistributionCounter counter;
@@ -85,8 +89,8 @@ void check_scans_finding(std::vector < std::string > filename) {
 		std::vector < int > dist = counter.get_distribution();
 		write_vector(dist, "distribution" + pref + ".txt");
 
-		check_mass_calculation(pref + TSV_SUF, pref + MSDECONV_SUF, MS_Align, dist, "MS" + pref + ".txt");
-		check_mass_calculation(pref + TSV_SUF, pref + XTRACT_SUF, Thermo_Xtract, dist, "thermo" + pref + ".txt");
+		check_mass_calculation(pref + TSV_SUF, pref + MSDECONV_SUF, MS_Align, dist, "MS" + pref + ".txt", eps);
+		check_mass_calculation(pref + TSV_SUF, pref + XTRACT_SUF, Thermo_Xtract, dist, "thermo" + pref + ".txt", eps);
 
 		std::cout << pref + TSV_SUF << " is done." << std::endl;
 	}

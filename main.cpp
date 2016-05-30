@@ -16,6 +16,7 @@
 #include "scans_finding.h"
 #include "mass_parts.h"
 #include "thermo_ratio.h"
+#include "help.h"
 
 class ArgParser {
 private:
@@ -23,12 +24,20 @@ private:
 
 	std::vector < int > tasks;
 
+	double evalue_border = 1e-10;
+	double eps = 1e-5;
+
 	const char *FILENAME_KEY = "-f";
 	const char *LIST_KEY = "-l";
 	const char *TASK_KEY = "-t";
+	const char *ERROR_BORDER_KEY = "-e";
+	const char *EPS_KEY = "-a";
 public:
 	ArgParser(int argc, char **argv) {
 		int cur_arg = 1;
+		if (argc == 1) {
+			tasks.push_back(0);
+		}
 		while (cur_arg < argc) {
 			if (strcmp(FILENAME_KEY, argv[cur_arg]) == 0) {
 				filenames.push_back(std::string(argv[++cur_arg]));
@@ -45,6 +54,12 @@ public:
 			else if (strcmp(TASK_KEY, argv[cur_arg]) == 0) {
 				tasks.push_back(std::stoi(argv[++cur_arg]));
 			}
+			else if (strcmp(ERROR_BORDER_KEY, argv[cur_arg]) == 0) {
+				evalue_border = std::stod(argv[++cur_arg]);
+			}
+			else if (strcmp(EPS_KEY, argv[cur_arg]) == 0) {
+				eps = std::stod(argv[++cur_arg]);
+			}
 			cur_arg++;
 		}
 	}
@@ -56,6 +71,14 @@ public:
 	std::vector < int > get_tasks() {
 		return tasks;
 	}
+
+	double get_evalue_border() {
+		return evalue_border;
+	}
+
+	double get_eps() {
+		return eps;
+	}
 };
 
 int main(int argc, char **argv) {
@@ -65,27 +88,30 @@ int main(int argc, char **argv) {
 	ArgParser args(argc, argv);
 	std::vector < std::string > filenames = args.get_filenames();
 	std::vector < int > tasks = args.get_tasks();
-
+	
 	for (int t: tasks) {
 		switch (t) {
+			case 0: {
+				show_help();
+			}
 			case 1: {
-				check_zero_mass(filenames);
+				check_zero_mass(filenames, args.get_eps());
 				break;
 			}
 			case 2: {
-				check_no_peaks_scans(filenames);
+				check_no_peaks_scans(filenames, args.get_evalue_border());
 				break;
 			}
 			case 3: {
-				check_inclusion(filenames);
+				check_inclusion(filenames, args.get_evalue_border(), args.get_eps());
 				break;
 			}
 			case 4: {
-				check_same_mass(filenames);
+				check_same_mass(filenames, args.get_evalue_border(), args.get_eps());
 				break;
 			}
 			case 5: {
-				check_scans_finding(filenames);
+				check_scans_finding(filenames, args.get_eps());
 				break;
 			}
 			case 6: {
@@ -93,7 +119,7 @@ int main(int argc, char **argv) {
 				break;
 			}
 			case 7: {
-				check_thermo_scans_for_ratio(filenames);
+				check_thermo_scans_for_ratio(filenames, args.get_eps());
 				break;
 			}
 		}
