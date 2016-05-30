@@ -32,6 +32,7 @@ private:
 	const char *TASK_KEY = "-t";
 	const char *ERROR_BORDER_KEY = "-e";
 	const char *EPS_KEY = "-a";
+	const char *HELP_KEY = "-h";
 public:
 	ArgParser(int argc, char **argv) {
 		int cur_arg = 1;
@@ -59,6 +60,9 @@ public:
 			}
 			else if (strcmp(EPS_KEY, argv[cur_arg]) == 0) {
 				eps = std::stod(argv[++cur_arg]);
+			}
+			else if (strcmp(HELP_KEY, argv[cur_arg]) == 0) {
+				tasks.push_back(0);
 			}
 			cur_arg++;
 		}
