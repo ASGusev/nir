@@ -30,7 +30,7 @@ public:
 				if (pos == thermo_scan.peaks.size() ||
 					abs(thermo_scan.peaks[pos].first - scan.peaks[i].first) > EPS ||
 					abs(thermo_scan.peaks[pos].second - scan.peaks[i].second) > EPS) {
-					std::cout << "Scan " << scan.id << " from MS-Align+ contains pikes which are not found by Thermo Xtract.\n";
+					std::cout << "Scan " << scan.id << " from MS-Deconv contains pikes which are not found by Thermo Xtract.\n";
 					unique_found = true;
 				}
 			}
@@ -49,8 +49,8 @@ void check_inclusion(std::vector < std::string > filenames, double good_border, 
 		ScansCollector < EValueTester > thermo_storage(good_thermo_scans, scan_checker);
 		go_through_mgf(Thermo_Xtract, pref + XTRACT_SUF, thermo_storage);
 
-		ComparePeaks ms_align_tester(good_thermo_scans, eps);
-		go_through_mgf(MS_Align, pref + MSDECONV_SUF, ms_align_tester);
+		ComparePeaks ms_deconv_tester(good_thermo_scans, eps);
+		go_through_mgf(MS_Deconv, pref + MSDECONV_SUF, ms_deconv_tester);
 	}
 	std::cout << std::endl;
 }

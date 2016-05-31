@@ -89,7 +89,7 @@ void check_finding(std::vector < std::string > filename, double eps) {
 		std::vector < int > dist = counter.get_distribution();
 		write_vector(dist, "distribution" + pref + ".txt");
 
-		check_mass_calculation(pref + TSV_SUF, pref + MSDECONV_SUF, MS_Align, dist, "MS" + pref + ".txt", eps);
+		check_mass_calculation(pref + TSV_SUF, pref + MSDECONV_SUF, MS_Deconv, dist, "MS" + pref + ".txt", eps);
 		check_mass_calculation(pref + TSV_SUF, pref + XTRACT_SUF, Thermo_Xtract, dist, "thermo" + pref + ".txt", eps);
 
 		std::cout << pref + TSV_SUF << " is done." << std::endl;

@@ -42,7 +42,7 @@ void check_same_mass(std::vector < std::string > filenames, double evalue_border
 		go_through_mgf(Thermo_Xtract, pref + XTRACT_SUF, thermo_scans);
 
 		MassTester ms_tester(good_thermo_scans, eps);
-		go_through_mgf(MS_Align, pref + MSDECONV_SUF, ms_tester);
+		go_through_mgf(MS_Deconv, pref + MSDECONV_SUF, ms_tester);
 		std::cout << ms_tester.get_match_number() << " scans have the same mass in both files.\n";
 	}
 	std::cout << std::endl;

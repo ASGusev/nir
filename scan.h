@@ -24,7 +24,7 @@ struct Scan {
 	void operator= (Scan &other);
 };
 
-enum deconv_program {MS_Align, Thermo_Xtract};
+enum deconv_program {MS_Deconv, Thermo_Xtract};
 
 const std::string MGF_SCAN_BEGINNING = "BEGIN IONS";
 const std::string MGF_SCAN_ENDING = "END IONS";
@@ -62,7 +62,7 @@ void go_through_mgf(deconv_program format, std::string filename, Func &action) {
 			action(cur_scan);
 		}
 		else if (line.compare(0, ID_PREF.size(), ID_PREF) == 0) {
-			if (format == MS_Align) {
+			if (format == MS_Deconv) {
 				cur_scan.id = msalign_id(line);
 			}
 			else {

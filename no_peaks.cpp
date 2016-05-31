@@ -51,7 +51,7 @@ void check_no_peaks_scans(std::vector < std::string > filenames, double evalue_b
 		go_through_tsv(pref + TSV_SUF, map_creator);
 		std::unordered_map < int, Scan > theoretic_scans_map = map_creator.get_map();
 
-		find_no_peaks_scans(theoretic_scans_map, MS_Align, pref + MSDECONV_SUF, evalue_border);
+		find_no_peaks_scans(theoretic_scans_map, MS_Deconv, pref + MSDECONV_SUF, evalue_border);
 		find_no_peaks_scans(theoretic_scans_map, Thermo_Xtract, pref + XTRACT_SUF, evalue_border);
 	}
 	std::cout << std::endl;

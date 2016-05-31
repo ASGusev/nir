@@ -14,7 +14,7 @@ void check_zero_mass(std::vector < std::string > filenames, double accuracy) {
 		go_through_tsv(pref + TSV_SUF, map_creator);
 		std::unordered_map < int, Scan > theoretic_scans_map = map_creator.get_map();
 
-		find_zero_mass(MS_Align, pref + MSDECONV_SUF, accuracy);
+		find_zero_mass(MS_Deconv, pref + MSDECONV_SUF, accuracy);
 		find_zero_mass(Thermo_Xtract, pref + XTRACT_SUF, accuracy);
 	}
 	std::cout << std::endl;
