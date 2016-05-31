@@ -1,7 +1,7 @@
 #include "help.h"
 #include <string>
 
-std::string help[] = {
+std::string HELP[] = {
 	"This program is for getting some data about MS Deconv and Thermo Xtract deconvolution output.\n",
 	"\n",
 	"The command line arguements are:\n",
@@ -10,6 +10,7 @@ std::string help[] = {
 	"-e to specify good EValue border\n",
 	"-a to specify mass accuracy\n",
 	"-t to add task\n",
+	"-h to view this page\n",
 	"\n",
 	"The following tasks are possible:\n",
 	"1 Check for scans with zero mass.\n",
@@ -22,7 +23,7 @@ std::string help[] = {
 };
 
 void show_help() {
-	for (std::string line: help) {
+	for (std::string line: HELP) {
 		std::cout << line;
 	}
 }
